@@ -28,7 +28,7 @@ The goals / steps of this project are the following:
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
 ###Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
 
-
+---
 ###Camera Calibration
 
 The code for this step is contained in "cal.py".  
@@ -103,4 +103,4 @@ Here's a [link to my video result](./project_video.mp4)
 ####1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
 Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further. My current pipeline might fail in more extreme curves and in more extreme lighting conditions like in the harder_challenge video. We could possibly overcome this with more robust thresholding and parameter selection. I tested out directional threshold on both challenge videos and did improve my performance but further work is needed.
----
+
