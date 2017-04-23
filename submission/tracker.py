@@ -1,9 +1,10 @@
 import numpy as np
 import cv2
+import matplotlib.pyplot as plt
 
 class Line():
 
-    def __init__(self, width, height, margin, ym=1, xm=1, smoothing=15):
+    def __init__(self,nwindows=9, margin=100, minpix=125, ym=1, xm=1, smoothing=15):
 
         self.recent_Leftfitx = []
 
@@ -11,15 +12,15 @@ class Line():
 
         self.first = False
 
-        self.width = width
-
-        self.height = height
-
         self.margin = margin
+
+        self.nwindows = nwindows
 
         self.ym = ym
 
         self.xm = xm
+
+        self.minpix = minpix
 
         self.smoothing = smoothing
 
@@ -44,7 +45,8 @@ class Line():
         midpoint = np.int(histogram.shape[0]/2)
         leftx_base = np.argmax(histogram[:midpoint])
         rightx_base = np.argmax(histogram[midpoint:]) + midpoint
-        minpix = 125
+        # Set minimum number of pixels found to recenter window
+        minpix = self.minpix
         leftx_current = leftx_base
         rightx_current = rightx_base
 
@@ -89,7 +91,7 @@ class Line():
         return left_fit, right_fit, left_lane_inds, right_lane_inds
 
     def slidingWindow(self, binary_warped):
-        nwindows=9
+        nwindows=self.nwindows
         window_height = np.int(binary_warped.shape[0]/nwindows)
         # Identify the x and y positions of all nonzero pixels in the image
         nonzero = binary_warped.nonzero()
@@ -98,7 +100,7 @@ class Line():
         # Current positions to be updated for each window
 
         # Set the width of the windows +/- margin
-        margin = 100
+        margin = self.margin
         # Set minimum number of pixels found to recenter window
 
         # Create empty lists to receive left and right lane pixel indices
@@ -133,5 +135,44 @@ class Line():
 
         self.recent_Leftfitx.append(left_fitx)
         self.recent_rightfitx.append(right_fitx)
+        y_eval = np.max(ploty)
+        #left_curverad = ((1 + (2*left_fit[0]*y_eval + left_fit[1])**2)**1.5) / np.absolute(2*left_fit[0])
+        #right_curverad = ((1 + (2*right_fit[0]*y_eval + right_fit[1])**2)**1.5) / np.absolute(2*right_fit[0])
+        #print(left_curverad, right_curverad)
 
-        return lefty, righty, left_fit, right_fit, rightx, leftx, ploty, np.average(self.recent_rightfitx[-self.smoothing:], axis = 0), np.average(self.recent_Leftfitx[-self.smoothing:], axis = 0)
+        ym_per_pix = self.ym # meters per pixel in y dimension
+        xm_per_pix = self.xm # meters per pixel in x dimension
+
+        # Fit new polynomials to x,y in world space
+        left_fit_cr = np.polyfit(lefty*ym_per_pix, leftx*xm_per_pix, 2)
+        right_fit_cr = np.polyfit(righty*ym_per_pix, rightx*xm_per_pix, 2)
+        # Calculate the new radii of curvature
+        left_curverad = ((1 + (2*left_fit_cr[0]*y_eval*ym_per_pix + left_fit_cr[1])**2)**1.5) / np.absolute(2*left_fit_cr[0])
+        right_curverad = ((1 + (2*right_fit_cr[0]*y_eval*ym_per_pix + right_fit_cr[1])**2)**1.5) / np.absolute(2*right_fit_cr[0])
+        # Now our radius of curvature is in meters
+        #print(left_curverad, 'm', right_curverad, 'm')
+        # Example values: 632.1 m    626.2 m
+
+        #getting postition
+        camera_center = (left_fitx[-1] + right_fitx[-1])/2
+        center_diff = (camera_center-binary_warped.shape[1]/2) * xm_per_pix
+        side_pos = 'left'
+        if center_diff <= 0:
+            side_pos = 'right'
+
+        #visualization tool
+        #out_img = np.dstack((binary_warped, binary_warped, binary_warped))*255
+        #out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
+        #out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
+        #plt.imshow(out_img)
+        #plt.plot(left_fitx, ploty, color='yellow')
+        #plt.plot(right_fitx, ploty, color='yellow')
+        #plt.xlim(0, 1280)
+        #plt.ylim(720, 0)
+        #plt.show()
+        #plt.imsave('./output_images/flkajfdl.jpg', out_img)
+        #cv2.waitKey(0)
+        right_mean = np.average(self.recent_rightfitx[-self.smoothing:], axis = 0)
+        left_mean = np.average(self.recent_Leftfitx[-self.smoothing:], axis = 0)
+
+        return left_curverad, right_curverad, center_diff, side_pos, left_mean, right_mean, ploty

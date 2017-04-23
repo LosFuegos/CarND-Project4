@@ -65,21 +65,6 @@ def project(img, warped, Minv, ploty, left_fitx, right_fitx):
     result = cv2.addWeighted(img, 1, newwarp, 0.3, 0)
 
     return result
-def mag_thresh(img, sobel_kernel=31, thresh=(0, 255)):
-    # Take both Sobel x and y gradients
-    sobelx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=sobel_kernel)
-    sobely = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=sobel_kernel)
-    # Calculate the gradient magnitude
-    gradmag = np.sqrt(sobelx**2 + sobely**2)
-    # Rescale to 8 bit
-    scale_factor = np.max(gradmag)/255
-    gradmag = (gradmag/scale_factor).astype(np.uint8)
-    # Create a binary image of ones where threshold is met, zeros otherwise
-    binary_output = np.zeros_like(gradmag)
-    binary_output[(gradmag >= thresh[0]) & (gradmag <= thresh[1])] = 1
-
-    # Return the binary image
-    return binary_output
 
 def getCurvature(lefty, righty, ploty, warped, leftx, rightx, left_fitx, right_fitx, left_fit, right_fit):
 
@@ -128,7 +113,7 @@ def pipeline(img):
     b = lab[:,:,2]
 
     #applying thresholding
-    dirthresh = dir_threshold(gray, thresh=(.8, 1.))
+    #dirthresh = dir_threshold(gray, thresh=(.8, 1.))
     bi_V = Threshold(v, thresh=(229,255))
     bi_R = Threshold(r,thresh=(234,255))
     bi_U = Threshold(u,thresh=(145,255))
@@ -137,29 +122,20 @@ def pipeline(img):
 
 
     #combining 5 thresholded images
-    combined = combine(bi_V, bi_R, bi_U, bi_l, bi_b, dirthresh)    #performing perspective transform
+    combined = combine(bi_V, bi_R, bi_U, bi_l, bi_b)    #performing perspective transform
     warped, Minv = warp(combined)
 
-    width = 100
-    height = 40
-    margin = 25
-    curves = Line(width, height, margin, ym=10/720, xm=4/384, smoothing=60)
+    curves = Line(margin=100, ym=10/720, xm=4/384, smoothing=60)
 
     #finding lane lines
 
-    lefty, righty, left_fit, right_fit, rightx, leftx, ploty, right_fitx, left_fitx = curves.slidingWindow(warped)
-
+    left_curverad, right_curverad, center_diff, side_pos, left_fitx, right_fitx, ploty = curves.slidingWindow(warped)
 
     result = project(img, warped, Minv, ploty, left_fitx, right_fitx)
-
-    left_curverad, right_curverad, center_diff, side_pos = getCurvature(lefty, righty, ploty, warped, leftx, rightx, left_fitx, right_fitx, left_fit, right_fit)
 
     cv2.putText(result, 'Radius of Left Curvature = ' + str(round(left_curverad,3))+'(m)',(50,50), cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2)
     cv2.putText(result, 'Radius of Right Curvature = ' + str(round(right_curverad,3))+'(m)',(50,100), cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2)
     cv2.putText(result, 'Vehicle is '+str(abs(round(center_diff,3)))+'m '+side_pos+' center of',(50,150),cv2.FONT_HERSHEY_SIMPLEX,1,(255,0,255),2)
-
-    #plt.imshow(result)
-    #plt.show()
 
     return result
 
@@ -172,6 +148,6 @@ level1_output = 'project_video_done.mp4'
 level2_output = 'challenge_video_done.mp4'
 level3_output = 'harder_challenge_video_done.mp4'
 mine_output = 'myOwnVideo_done.mp4'
-clip1 = VideoFileClip(level3)
+clip1 = VideoFileClip(level1)
 white_clip = clip1.fl_image(pipeline)
-white_clip.write_videofile(level3_output, audio=False)
+white_clip.write_videofile(level1_output, audio=False)
